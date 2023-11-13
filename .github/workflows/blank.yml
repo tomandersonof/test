@@ -1,4 +1,4 @@
-name: 5:f
+name: Ngrok and SSH RDP Connection
 
 on:
   workflow_dispatch:
@@ -41,7 +41,7 @@ jobs:
 
     - name: Establish SSH RDP Connection
       run: |
-        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@localhost -p ${{ env.NGROK_PORT }} -N
+        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p ${{ env.NGROK_PORT }} runneradmin@localhost -N
         if ($LastExitCode -eq 0) { 
           echo "SSH connection successful"
         } else {
