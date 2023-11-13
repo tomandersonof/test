@@ -38,8 +38,5 @@ jobs:
     - name: Start Ngrok Tunnel
       run: .\ngrok\ngrok tcp 3389 --log=stdout &
 
-    - name: Wait for 30 minutes
-      run: Start-Sleep -Seconds 1800
-
     - name: Establish SSH RDP Connection
       run: ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@localhost -p ${{ env.NGROK_PORT }} -N
