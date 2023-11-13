@@ -1,0 +1,37 @@
+name: Start Ngrok Tunnel and Connect to RDP via SSH
+
+on:
+  schedule:
+    - cron: '0 */30 * * *'
+
+jobs:
+
+  ngrok-rdp:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set Credentials
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+          RDESKTOP_USERNAME: ${{ secrets.RDESKTOP_USERNAME }}
+          RDESKTOP_PASSWORD: ${{ secrets.RDESKTOP_PASSWORD }}
+
+      - name: Download Ngrok
+        run: curl -s https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip | tar -xvzf -
+
+      - name: Authenticate Ngrok
+        run: ./ngrok authtoken $NGROK_AUTH_TOKEN
+
+      - name: Start Ngrok Tunnel
+        run: ./ngrok tcp 3389 --log=stdout &
+
+      - name: Connect to RDP via SSH
+        run: ssh -t 30m rdpuser@$(curl --silent --output /dev/stdout https://api.ngrok.com/api/tunnels | jq -r '.tunnels[0].public_url') -L 3389 -l rdpuser -N
+
+      - name: Keep Tunnel Alive
+        run: |
+          sleep 1800
+          pkill ngrok
