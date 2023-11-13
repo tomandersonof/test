@@ -81,6 +81,6 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem runneradmin@localhost "bash run_script.sh"
 
-            - name: Create Tunnel
+    - name: Create Tunnel
       run: .\ngrok\ngrok.exe tcp 3389
 
