@@ -1,4 +1,4 @@
-name: Ngrok and SSH RDP Connection
+name: 5:f
 
 on:
   workflow_dispatch:
@@ -37,6 +37,14 @@ jobs:
 
     - name: Start Ngrok Tunnel
       run: .\ngrok\ngrok tcp 3389 --log=stdout &
+      id: ngrok
 
     - name: Establish SSH RDP Connection
-      run: ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@localhost -p ${{ env.NGROK_PORT }} -N
+      run: |
+        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null runneradmin@localhost -p ${{ env.NGROK_PORT }} -N
+        if ($LastExitCode -eq 0) { 
+          echo "SSH connection successful"
+        } else {
+          echo "SSH connection failed"
+          exit 1
+        }
