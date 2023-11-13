@@ -11,26 +11,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Check out the code from the repository
       - uses: actions/checkout@v2
 
+      # Set environment variables for credentials
       - name: Set Credentials
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
           RDESKTOP_USERNAME: ${{ secrets.RDESKTOP_USERNAME }}
           RDESKTOP_PASSWORD: ${{ secrets.RDESKTOP_PASSWORD }}
 
+      # Download Ngrok executable
       - name: Download Ngrok
         run: curl -s https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip | tar -xvzf -
 
+      # Authenticate Ngrok using the NGROK_AUTH_TOKEN secret
       - name: Authenticate Ngrok
         run: ./ngrok authtoken $NGROK_AUTH_TOKEN
 
+      # Start an Ngrok tunnel for RDP access
       - name: Start Ngrok Tunnel
         run: ./ngrok tcp 3389 --log=stdout &
 
+      # Connect to the RDP server using SSH
       - name: Connect to RDP via SSH
-        run: ssh -t 30m rdpuser@$(curl --silent --output /dev/stdout https://api.ngrok.com/api/tunnels | jq -r '.tunnels[0].public_url') -L 3389 -l rdpuser -N
+        run: ssh -t 30m $RDESKTOP_USERNAME@$(curl --silent --output /dev/stdout https://api.ngrok.com/api/tunnels | jq -r '.tunnels[0].public_url') -L 3389 -l $RDESKTOP_USERNAME -N
 
+      # Restart the Ngrok tunnel after 1800 seconds (30 minutes)
       - name: Keep Tunnel Alive
         run: |
           sleep 1800
