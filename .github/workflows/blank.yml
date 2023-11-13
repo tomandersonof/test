@@ -39,9 +39,17 @@ jobs:
       run: .\ngrok\ngrok tcp 3389 --log=stdout &
       id: ngrok
 
+    - name: Wait for Ngrok URL
+      run: |
+        $ngrokStatus = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -Method Get
+        $ngrokURL = $ngrokStatus.tunnels[0].public_url
+        echo "Ngrok URL: $ngrokURL"
+        echo "::set-output name=ngrok_url::$ngrokURL"
+      shell: pwsh
+
     - name: Establish SSH RDP Connection
       run: |
-        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p ${{ env.NGROK_PORT }} runneradmin@localhost -N
+        ssh -L 33389:localhost:3389 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 22 runneradmin@${{ steps.ngrok.outputs.ngrok_url }} -N
         if ($LastExitCode -eq 0) { 
           echo "SSH connection successful"
         } else {
