@@ -30,7 +30,11 @@ jobs:
     - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: Create Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
+      run: |
+        .\ngrok\ngrok.exe tcp 3389 &
+
+    - name: Wait for Tunnel to be ready
+      run: Start-Sleep -s 10
 
     - name: Run Bash Script on Remote Machine
       run: |
