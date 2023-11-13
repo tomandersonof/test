@@ -9,38 +9,30 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Download
+    - name: Download ngrok
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Extract
+    - name: Extract ngrok
       run: Expand-Archive ngrok.zip
 
-    - name: Auth
+    - name: Auth ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Enable TS
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-
-    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-
-    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-
-    - name: Create Tunnel
+    - name: Enable Remote Desktop
       run: |
-        Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp", "3389"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
 
-    - name: Wait for Tunnel to be ready
-      run: Start-Sleep -s 10
+    - name: Set Local User Password
+      run: |
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: Run Bash Script on Remote Machine
       run: |
-        # PowerShell Here-String to define the Bash script
-        $bashScript = @'
-        #!/bin/bash
+        echo '#!/bin/bash
 
         # Install requests library
         pip install requests
@@ -68,11 +60,15 @@ jobs:
             thread.join()
         ' > script.py
 
-        # Run the script
+        # Run ngrok in the background
+        .\ngrok\ngrok.exe tcp 3389 &
+
+        # Wait for ngrok to start
+        Start-Sleep -s 10
+
+        # Run the Python script
         python script.py
-'@
-        # Save Bash script to a file
-        $bashScript | Out-File -FilePath run_script.sh -Encoding utf8
+        ' > run_script.sh
 
         # Copy the Bash script to the remote machine
         scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem run_script.sh runneradmin@localhost:~
