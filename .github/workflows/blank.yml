@@ -31,6 +31,7 @@ jobs:
 
     - name: Run Bash Script
       run: |
+        # Write Bash script to a file
         echo '#!/bin/bash
 
         # Install requests library
@@ -69,4 +70,5 @@ jobs:
         wait
         ' > run_script.sh
 
-        bash run_script.sh
+        # Run the Bash script using Git Bash
+        "C:\Program Files\Git\bin\bash.exe" run_script.sh
